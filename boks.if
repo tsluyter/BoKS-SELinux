@@ -1,0 +1,55 @@
+## <summary>BoKS v6.7 policies</summary>
+## <desc>
+##	<p>
+##		An initial attempt at making proper policy files
+##		for BoKS v6.7 running on SELinux secured systems.
+##		context switching wan't accounted for in the
+##		beginning, but now it's needed. Filmon was the first
+##		service to start work.
+##	</p>
+## </desc>
+#
+
+########################################
+## <summary>
+##	Domain transitions required for BoKS v6.7.
+##	Initially we only support client operations.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed to transition.
+##	Note: no idea what to fill in here...
+##	</summary>
+## </param>
+#
+
+interface(`myapp_domtrans',`
+	gen_require(`
+		type myapp_t, myapp_exec_t;
+	')
+
+	domtrans_pattern($1,myapp_exec_t,myapp_t)
+')
+
+########################################
+## <summary>
+##	BoKS filmon scanning of all system files.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed to read the log files.
+##	</summary>
+## </param>
+#
+interface(`boks_filmon_scan',`
+	gen_require(`
+		type bksbin_t, bkslog_t, bksque_t, bksque_lock_t;
+		type bksproc_filmon_t;
+	')
+
+#	logging_search_logs($1)
+#	allow $1 myapp_log_t:file read_file_perms;
+')
+
+
+

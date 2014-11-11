@@ -1,0 +1,60 @@
+# label: system_u:object_r:bksXXX_YYY_t
+# MLS sensitivity: s0
+# MCS categories: <none>
+
+# Example from existing policy
+#/var/www(/.*)? 
+#/var/www/nut-cgi-bin/upsimage\.cgi
+
+# Files in user directories
+/home/(.*)?/\.boks_uenv		--	system_u:object_r:home_root_t:s0
+
+# BoKS configuration files
+/etc/opt/boksm(/.*)?			system_u:object_r:bksetc_t:s0
+
+# BoKS binaries and daemons
+/opt/boksm(/.*)?			system_u:object_r:bksbin_t:s0
+/opt/boksm/bin(/.*)?			system_u:object_r:bksbin_command_t:s0
+/opt/boksm/bin/suexec			system_u:object_r:bksbin_suexec_t:s0
+/opt/boksm/man(/.*)?			system_u:object_r:man_t:s0
+/opt/boksm/sbin(/.*)?			system_u:object_r:bksbin_command_t:s0
+/opt/boksm/lib(/.*)?			system_u:object_r:bksbin_command_t:s0
+/opt/boksm/lib/filmon		-- 	system_u:object_r:bksbin_filmon_t:s0
+/opt/boksm/lib/gui(/.*)?		system_u:object_r:bksbin_gui_t:s0
+/opt/boksm/lib/bkstd 		-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_aced 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_adpswsyncd 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_authd 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_autoregisterd -- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_bccasd 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_bksd 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_bridge 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_cached 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_clntd 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_comstated 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_cron 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_csspd 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_drainmast 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_eventd 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_host_deregisterd 	-- system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_hostlookupd 	-- system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_init 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_master 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_servc 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_servm 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_sshd 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_sslproxy 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/boks_udsqd 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/crlserver 	-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/httpsrv 		-- 	system_u:object_r:bksbin_daemon_t:s0
+/opt/boksm/lib/sftp-server 	-- 	system_u:object_r:bksbin_daemon_t:s0
+
+# BoKS log files etc
+/var/opt/boksm(/.*)?			system_u:object_r:bksvar_t:s0
+/var/opt/boksm/btmp		--	system_u:object_r:faillog_t:s0
+/var/opt/boksm/boks_errlog	--	system_u:object_r:bkslog_t:s0
+/var/opt/boksm/data/LOG		--	system_u:object_r:bkslog_t:s0
+
+# BoKS queues and locks
+/var/opt/boksm/unipc(/.*)?		system_u:object_r:bksque_t:s0
+

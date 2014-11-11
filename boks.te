@@ -1,0 +1,827 @@
+#============= Info header ================
+# 
+# This SELinux module is an experiment, to try and get FoxT Server Control,
+# aka BoKS, to run properly while under control of SELinux. For more information
+# on the FoxT Server Control security software, please see http://www.foxt.com
+#
+# This SELinux module was written by Thomas Sluyter and is made available as-is. 
+# It is absolutely not production-ready and should not be used to run BoKS systems
+# in a live environment. While most of BoKS' basic functions have been tested and
+# verified to work, there are still many features that I cannot test in my current
+# dev environment. I am only running a vanilla BoKS domain. No LDAP servers, no 
+# Kerberos, no other fancy features. 
+# 
+# Most of the rules in this file were built by using the various SELinux troubleshooting
+# tools, determining what access needs to be opened up. I've done it all manually, to
+# ensure that we're not opening up too much. So yeah: trial and error. Lots of it. 
+#
+# This code is made available under the Creative Commons - Attribution-ShareAlike
+# license. See http://creativecommons.org/licenses/by-sa/3.0/
+# You are free:
+# * to Share & to copy, distribute and transmit the work
+# * to Remix & to adapt the work
+# * to make commercial use of the work
+# Under the following conditions:
+# Attribution & You must attribute the work in the manner specified by the author or 
+# licensor (but not in any way that suggests that they endorse you or your use of 
+# the work.
+# Share Alike & If you alter, transform, or build upon this work, you may distribute 
+# the resulting work only under the same or similar license to this one.
+#
+
+
+module boks 1.66;
+
+require {
+	role unconfined_r;
+	type abrt_helper_t;
+	type abrt_helper_exec_t;
+	type admin_home_t;
+	type auditd_log_t;
+	type bin_t;
+	type chkpwd_t;
+	type chkpwd_exec_t;
+	type consoletype_t;
+	type consoletype_exec_t;
+	type crond_t;
+	type default_context_t;
+	type device_t;
+	type devlog_t;
+	type devpts_t;
+	type devtty_t;
+	type etc_t;
+	type etc_runtime_t;
+	type faillog_t;
+	type file_context_t;
+	type fs_t;
+	type ftpd_t;
+	type ftpd_initrc_exec_t;
+	type fusermount_exec_t;
+	type home_root_t;
+	type hostname_t;
+	type hostname_exec_t;
+	type init_t;
+	type initrc_t;
+	type initrc_var_run_t;
+	type lastlog_t;
+	type ld_so_t;
+	type ld_so_cache_t;
+	type load_policy_t;
+	type load_policy_exec_t;
+	type lib_t;
+	type local_login_t;
+	type locale_t;
+	type mail_spool_t;
+	type mount_t;
+	type mount_t;
+	type mount_exec_t;
+	type namespace_init_t;
+	type namespace_init_exec_t;
+	type net_conf_t;
+	type node_t;
+	type null_device_t;
+	type oddjob_mkhomedir_t;
+	type oddjob_mkhomedir_exec_t;
+	type passwd_t;
+	type passwd_exec_t;
+	type port_t;
+	type proc_t;
+	type ptmx_t;
+	type root_t;
+	type rpm_tmp_t;
+	type security_t;
+	type selinux_config_t;
+	type semanage_t;
+	type semanage_exec_t;
+	type semanage_read_lock_t;
+	type semanage_store_t;
+	type semanage_trans_lock_t;
+	type setfiles_t;
+	type setfiles_exec_t;
+	type setrans_var_run_t;
+	type setroubleshootd_t;
+	type setfiles_t;
+	type shadow_t;
+	type shell_exec_t;
+	type sshd_t;
+	type ssh_port_t;
+	type su_exec_t;
+	type sysctl_t;
+	type sysctl_crypto_t;
+	type sysctl_kernel_t;
+	type syslogd_t;
+	type system_cronjob_t;
+	type tmp_t;
+	type unconfined_t;
+	type updpwd_t;
+	type updpwd_exec_t;
+	type urandom_device_t;
+	type user_cron_spool_t;
+	type user_home_t;
+	type user_home_dir_t;
+	type user_tmp_t;
+	type user_tty_device_t;
+	type usr_t;
+	type var_t;
+	type var_log_t;
+	type var_run_t;
+	type var_spool_t;
+	type wtmp_t;
+	type xauth_t;
+	type xauth_t;
+	type xauth_exec_t;
+	type xdm_tmp_t;
+
+	class capability { audit_write setgid audit_control setuid chown sys_tty_config dac_override sys_resource net_bind_service fowner kill};
+	class chr_file { getattr ioctl read write setattr open };
+	class dir {create read search open getattr rename write relabelto relabelfrom add_name remove_name unlink link rmdir setattr};
+	class fd { use };
+	class fifo_file { getattr read open write lock ioctl };
+	class file { create write getattr read lock open relabelto append rename execute relabelfrom setattr link unlink execute_no_trans ioctl entrypoint };
+	class filesystem {associate getattr};
+	class key { search read write link};
+	class lnk_file { getattr read create unlink relabelfrom relabelto };
+	class netlink_audit_socket { create bind read write getattr nlmsg_read nlmsg_relay };
+	class netlink_route_socket { create bind read write getattr nlmsg_read };
+	class process { fork transition sigchld setsched rlimitinh siginh noatsecure setpgid signal signull getattr };
+	class security { load_policy };
+	class sem { create };
+	class shm { create };
+	class sock_file {read getattr lock write open relabelto relabelfrom link append setattr create rename unlink ioctl};
+	class tcp_socket {getattr connect create read write bind node_bind getopt setopt ioctl listen accept name_bind name_connect shutdown };
+	class udp_socket {getattr connect create read write bind node_bind getopt setopt ioctl listen accept name_bind shutdown };
+	class unix_stream_socket {create read write accept connectto sendto connect bind listen};
+	class unix_dgram_socket {create read write accept sendto connect bind listen};
+}
+
+
+#============= type definitions ================
+# These are the file and process types we will be using to label all of the
+# stuff that's specific to BoKS. This is what now separates BoKS from the rest 
+# of the OS. Up until now, BoKS always ran as unconfined_t. 
+
+type bksbin_t;
+type bksbin_command_t;
+type bksbin_daemon_t;
+type bksbin_filmon_t;
+type bksbin_suexec_t;
+type bksbin_gui_t;
+type bksetc_t;
+type bksdoc_t;
+type bkslog_t;
+type bksque_t;
+type bksvar_t;
+
+type bksproc_bksd_t;
+type bksproc_bridge_t;
+type bksproc_cached_t;
+type bksproc_clntd_t;
+type bksproc_command_t;
+type bksproc_cron_t;
+type bksproc_daemon_t;
+type bksproc_filmon_t;
+type bksproc_init_t;
+type bksproc_roleset_t;
+type bksproc_sshd_t;
+type bksproc_suexec_t;
+type bksproc_udsqd_t;
+type bksproc_xd_t;
+
+type boks_port_t;
+
+
+#============= role definitions ================
+# Audit2allow informed me that I needed to setup the following. Time to learn
+# about SELinux roles and what they do. See also:
+# http://danwalsh.livejournal.com/55324.html
+
+role unconfined_r types bksproc_daemon_t;
+role unconfined_r types bksproc_command_t;
+role unconfined_r types bksproc_filmon_t;
+
+
+#============= allow setting of file contexts ================
+# Required so you can at least relabel the BoKS files to the proper contexts.
+# 
+
+allow unconfined_t bksbin_t : file { relabelfrom relabelto };
+allow unconfined_t bksbin_t : lnk_file { relabelfrom relabelto };
+allow unconfined_t bksbin_command_t : file { relabelfrom relabelto };
+allow unconfined_t bksbin_command_t : lnk_file { relabelfrom relabelto };
+allow unconfined_t bksbin_daemon_t : file { relabelfrom relabelto };
+allow unconfined_t bksbin_filmon_t : file { relabelfrom relabelto };
+allow unconfined_t bksbin_gui_t : file { relabelfrom relabelto };
+allow unconfined_t bksetc_t : file { relabelfrom relabelto };
+allow unconfined_t bksdoc_t : file { relabelfrom relabelto };
+allow unconfined_t bkslog_t : file { relabelfrom relabelto };
+allow unconfined_t bksque_t : file { relabelfrom relabelto };
+allow unconfined_t bksque_t : sock_file { relabelfrom relabelto };
+allow unconfined_t bksvar_t : file { relabelfrom relabelto };
+allow unconfined_t bksbin_t : dir { relabelfrom relabelto };
+allow unconfined_t bksetc_t : dir { relabelfrom relabelto };
+allow unconfined_t bksbin_gui_t : dir { relabelfrom relabelto };
+allow unconfined_t bksvar_t : dir { relabelfrom relabelto };
+
+allow bksbin_t fs_t : filesystem { associate };
+allow bksbin_command_t fs_t : filesystem { associate };
+allow bksbin_daemon_t fs_t : filesystem { associate };
+allow bksbin_filmon_t fs_t : filesystem { associate };
+allow bksbin_gui_t fs_t : filesystem { associate };
+allow bksetc_t fs_t : filesystem { associate };
+allow bksdoc_t fs_t : filesystem { associate };
+allow bkslog_t fs_t : filesystem { associate };
+allow bksque_t fs_t : filesystem { associate };
+allow bksvar_t fs_t : filesystem { associate };
+
+# Needed to run restorecon on BoKS files
+allow setfiles_t bksbin_t : file { getattr relabelfrom relabelto };
+allow setfiles_t bksbin_command_t : file { getattr relabelfrom relabelto };
+allow setfiles_t bksbin_daemon_t : file { getattr relabelfrom relabelto };
+allow setfiles_t bksbin_filmon_t : file { getattr relabelfrom relabelto };
+allow setfiles_t bksbin_gui_t : file { getattr relabelfrom relabelto };
+allow setfiles_t bksdoc_t : file { getattr relabelfrom relabelto };
+allow setfiles_t bkslog_t : file { getattr relabelfrom relabelto };
+allow setfiles_t bksque_t : file { getattr relabelfrom relabelto };
+allow setfiles_t bksvar_t : file { getattr relabelfrom relabelto };
+allow setfiles_t bksque_t : sock_file { getattr relabelfrom relabelto };
+allow setfiles_t bksbin_t : dir { getattr read relabelfrom relabelto search};
+allow setfiles_t bksetc_t : dir { getattr read relabelfrom relabelto search};
+allow setfiles_t bksproc_command_t : dir { getattr read relabelfrom relabelto search};
+allow setfiles_t bksproc_daemon_t : dir { getattr read relabelfrom relabelto search};
+allow setfiles_t bksbin_gui_t : dir { getattr read relabelfrom relabelto search};
+allow setfiles_t bksvar_t : dir { getattr read relabelfrom relabelto search};
+allow setfiles_t bksproc_command_t : fd { use };
+allow setfiles_t bksproc_daemon_t : fd { use };
+
+
+# Allow troubleshooting for SELinux
+allow setroubleshootd_t bksbin_t : file { getattr };
+allow setroubleshootd_t bksbin_t : lnk_file { getattr };
+allow setroubleshootd_t bksbin_command_t : file { getattr };
+allow setroubleshootd_t bksbin_command_t : lnk_file { getattr };
+allow setroubleshootd_t bksbin_daemon_t : file { getattr };
+allow setroubleshootd_t bksbin_filmon_t : file { getattr };
+allow setroubleshootd_t bksbin_gui_t : file { getattr };
+allow setroubleshootd_t bksetc_t : file { getattr };
+allow setroubleshootd_t bksdoc_t : file { getattr };
+allow setroubleshootd_t bkslog_t : file { getattr };
+allow setroubleshootd_t bksque_t : file { getattr };
+allow setroubleshootd_t bksque_t : sock_file { getattr };
+allow setroubleshootd_t bksvar_t : file { getattr };
+allow setroubleshootd_t bksbin_t : dir { getattr };
+allow setroubleshootd_t bksetc_t : dir { getattr };
+allow setroubleshootd_t bksbin_gui_t : dir { getattr };
+allow setroubleshootd_t bksvar_t : dir { getattr };
+
+
+#============= allow generic Linux operations ================
+# This allows many of the user-run processes, as well as a whole host
+# of generic OS processes to access BoKS resources. Of course we're only
+# providing them the bare minimum. 
+
+allow unconfined_t bksbin_t : file { getattr read execute open };
+allow unconfined_t bksbin_t : lnk_file { getattr read };
+allow unconfined_t bksbin_command_t : file { getattr read execute open };
+allow unconfined_t bksbin_command_t : lnk_file { getattr read };
+allow unconfined_t bksbin_daemon_t : file { getattr read execute open };
+allow unconfined_t bksbin_filmon_t : file { getattr read execute open };
+allow unconfined_t bksbin_gui_t : file { getattr read execute open };
+allow unconfined_t bksetc_t : file { getattr read open write rename ioctl unlink setattr create };
+allow unconfined_t bksdoc_t : file { getattr read open write rename };
+allow unconfined_t bkslog_t : file { getattr read open rename append create unlink setattr };
+allow unconfined_t bksproc_command_t : file { getattr read execute open };
+allow unconfined_t bksproc_daemon_t : file { getattr read execute open };
+allow unconfined_t bksproc_filmon_t : file { getattr read execute open };
+allow unconfined_t bksque_t : file { getattr read open write lock };
+allow unconfined_t bksvar_t : file { getattr read open create write unlink};
+
+allow unconfined_t bksbin_t : dir { getattr read open write rename search};
+allow unconfined_t bksetc_t : dir { getattr read open write rename search add_name };
+allow unconfined_t bksbin_command_t : dir { getattr read open search };
+allow unconfined_t bksbin_daemon_t : dir { getattr read open search };
+allow unconfined_t bksbin_gui_t : dir { getattr read open write rename search};
+allow unconfined_t bksetc_t : dir { getattr read open write rename search add_name remove_name create};
+allow unconfined_t bkslog_t : dir { getattr read open write rename search add_name remove_name create};
+allow unconfined_t bksproc_command_t : dir { getattr read open search };
+allow unconfined_t bksproc_daemon_t : dir { getattr read open search };
+allow unconfined_t bksque_t : dir { getattr read open write rename search};
+allow unconfined_t bksvar_t : dir { getattr read open write rename search add_name remove_name rmdir create };
+
+allow unconfined_t bksproc_daemon_t : fd { use }; 
+allow unconfined_t bksproc_command_t : fd { use }; 
+allow unconfined_t bksproc_command_t : fifo_file { getattr write ioctl };
+allow unconfined_t bksetc_t : lnk_file { getattr read };
+allow unconfined_t bksproc_command_t : lnk_file { getattr read };
+allow unconfined_t bksproc_command_t : process { getattr fork setpgid sigchld setsched transition rlimitinh siginh noatsecure signal };
+allow unconfined_t bksproc_daemon_t : process { getattr fork setpgid sigchld setsched transition rlimitinh siginh noatsecure signal };
+allow unconfined_t bksque_t : sock_file { getattr read open write };
+allow unconfined_t bksproc_command_t : unix_stream_socket {read write connectto sendto };
+allow unconfined_t bksproc_daemon_t : unix_stream_socket {read write connectto sendto };
+
+allow crond_t bksetc_t : file { getattr read open };
+allow crond_t bksetc_t : dir { getattr open search read }; 
+allow crond_t bksetc_t : lnk_file { getattr read };
+
+allow initrc_t bksbin_t : file { getattr };
+allow initrc_t bksbin_t : lnk_file { getattr };
+allow initrc_t bksbin_command_t : file { getattr read open execute execute_no_trans ioctl };
+allow initrc_t bksbin_command_t : lnk_file { getattr read };
+allow initrc_t bksbin_daemon_t : file { getattr };
+allow initrc_t bksbin_filmon_t : file { getattr };
+allow initrc_t bksbin_gui_t : file { getattr };
+allow initrc_t bksetc_t : file { getattr read open ioctl };
+allow initrc_t bksdoc_t : file { getattr };
+allow initrc_t bkslog_t : file { getattr };
+allow initrc_t bksproc_command_t : file { getattr read open };
+allow initrc_t bksproc_daemon_t : file { getattr read open };
+allow initrc_t bksque_t : file { getattr };
+allow initrc_t bksvar_t : file { getattr link unlink };
+allow initrc_t bksque_t : sock_file { getattr };
+allow initrc_t bksbin_t : dir { getattr read search open};
+allow initrc_t bksetc_t : dir { getattr read search open };
+allow initrc_t bksbin_command_t : dir { getattr read search open };
+allow initrc_t bksbin_gui_t : dir { getattr read search open };
+allow initrc_t bksproc_command_t : dir { getattr read search open };
+allow initrc_t bksproc_daemon_t : dir { getattr read search open };
+allow initrc_t bksque_t : dir { getattr open read search open };
+allow initrc_t bksvar_t : dir { getattr open read search write add_name remove_name};
+allow initrc_t bksproc_daemon_t : fd { use };
+allow initrc_t bksproc_command_t : lnk_file { getattr read };
+allow initrc_t bksproc_daemon_t : lnk_file { getattr read };
+
+allow load_policy_t bksproc_command_t : fd { use };
+allow load_policy_t bksproc_daemon_t : fd { use };
+
+allow semanage_t bksproc_command_t : fd { use };
+allow semanage_t bksproc_daemon_t : fd { use };
+
+# In order to help with audit.log troubleshooting
+allow setroubleshootd_t bksbin_t : file { getattr };
+allow setroubleshootd_t bksbin_command_t : file { getattr };
+allow setroubleshootd_t bksbin_daemon_t : file { getattr };
+allow setroubleshootd_t bksbin_filmon_t : file { getattr };
+allow setroubleshootd_t bksbin_gui_t : file { getattr };
+allow setroubleshootd_t bksetc_t : file { getattr };
+allow setroubleshootd_t bksdoc_t : file { getattr };
+allow setroubleshootd_t bkslog_t : file { getattr };
+allow setroubleshootd_t bksque_t : file { getattr };
+allow setroubleshootd_t bksvar_t : file { getattr };
+allow setroubleshootd_t bksque_t : sock_file { getattr };
+allow setroubleshootd_t bksbin_t : dir { getattr read search};
+allow setroubleshootd_t bksbin_command_t : dir { getattr read search};
+allow setroubleshootd_t bksbin_daemon_t : dir { getattr read search};
+allow setroubleshootd_t bksproc_command_t : dir { getattr read search};
+allow setroubleshootd_t bksproc_daemon_t : dir { getattr read search};
+allow setroubleshootd_t bksetc_t : dir { getattr read search};
+allow setroubleshootd_t bksbin_gui_t : dir { getattr read search};
+allow setroubleshootd_t bksvar_t : dir { getattr read search};
+
+
+#============= allow filmon scanning ================
+# Actually, filmon needs to be able to getattr on every single file on the host.
+# And read as well, because it does cksum. I wish there wass a * operand for type.
+# But there isn't. 
+# 
+# This section will require a lot of expanding, in order to let filmon scan
+# all of the files you want it to keep an eye on. 
+
+allow bksproc_filmon_t bksbin_t : file { getattr read };
+allow bksproc_filmon_t bksbin_filmon_t : file { entrypoint };
+allow bksproc_filmon_t bkslog_t : file { getattr read };
+allow bksproc_filmon_t bksque_t : file { getattr read };
+allow bksproc_filmon_t bksvar_t : file { getattr read };
+allow bksproc_filmon_t bksetc_t : file { read getattr open };
+allow bksproc_filmon_t bksque_t : file { write lock open };
+allow bksproc_filmon_t bksvar_t : file { write create unlink open append };
+allow bksproc_filmon_t etc_t : file { read getattr open };
+allow bksproc_filmon_t ld_so_cache_t : file { read getattr open };
+allow bksproc_filmon_t ld_so_t : file read;
+allow bksproc_filmon_t lib_t : file { read getattr open execute };
+allow bksproc_filmon_t locale_t : file { read getattr open };
+
+allow bksproc_filmon_t bksetc_t : dir { search getattr };
+allow bksproc_filmon_t bksque_t : dir search;
+allow bksproc_filmon_t bksvar_t : dir { write remove_name search getattr add_name };
+allow bksproc_filmon_t etc_t : dir search;
+allow bksproc_filmon_t lib_t : dir search;
+allow bksproc_filmon_t root_t : dir search;
+allow bksproc_filmon_t var_run_t : dir search;
+allow bksproc_filmon_t var_t : dir search;
+
+allow bksproc_filmon_t bksproc_command_t : fd { use };
+allow bksproc_filmon_t crond_t : fd { use };
+allow bksproc_filmon_t crond_t : fifo_file { read write };
+allow bksproc_filmon_t lib_t : lnk_file { read };
+allow bksproc_filmon_t bksproc_command_t : process { sigchld };
+allow bksproc_filmon_t bksque_t : sock_file { write };
+allow bksproc_filmon_t bksproc_daemon_t : unix_stream_socket { connectto };
+allow bksproc_filmon_t self : unix_stream_socket { write read create connect };
+
+
+#============= allow BoKS processes to execute normally ===================
+# This section is long. It sets up all the rules for both BoKS daemons and BoKS
+# commands to access the resources they need. This is for both starting/stopping
+# BoKS, for running all the daemons and for making the whole authentication and
+# authorization process work. Of course it also makes all the BoKS CLI commands
+# work and interact with BOKS and the OS. 
+# 
+# Anything marked as VERIFY is something that is apparently needed to make things
+# work, but I'm in doubt about the rule. Usually I fear that the rule might open
+# things up a bit too much. 
+# 
+# I've tried to sort things as follows:
+# * first daemon rules, then the command rules
+# * file access, sorted alphabetically by type
+# * directory access, sorted alphabetically by type
+# * all other resource varieties, sorted by resource, then alphabetically by type.
+
+# Let BoKS run generic OS commands
+allow bksproc_daemon_t unconfined_t : file { getattr read open execute };
+
+allow bksproc_daemon_t admin_home_t : file { getattr read open ioctl };
+# VERIFY: Login also wants
+allow bksproc_daemon_t admin_home_t : file { write setattr rename link unlink };
+allow bksproc_daemon_t auditd_log_t : file { getattr open read write ioctl };
+allow bksproc_daemon_t bin_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t bksbin_t : file { getattr read open execute execute_no_trans ioctl entrypoint};
+allow bksproc_daemon_t bksbin_command_t : file { getattr read open execute execute_no_trans ioctl entrypoint};
+allow bksproc_daemon_t bksbin_daemon_t : file { getattr read open execute execute_no_trans entrypoint};
+allow bksproc_daemon_t bksbin_filmon_t : file { getattr read open execute execute_no_trans entrypoint};
+allow bksproc_daemon_t bksbin_gui_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t bksetc_t : file { getattr read open ioctl append create write setattr rename lock unlink };
+allow bksproc_daemon_t bksdoc_t : file { getattr read open ioctl };
+allow bksproc_daemon_t bkslog_t : file { create getattr read open write setattr rename link unlink lock ioctl append};
+allow bksproc_daemon_t bksproc_command_t : file { getattr read open execute write }; # write needed for /proc files
+allow bksproc_daemon_t bksproc_daemon_t : file { getattr read open execute write }; # write needed for /proc files
+allow bksproc_daemon_t bksque_t : file { create getattr read open write setattr rename link unlink lock ioctl append};
+allow bksproc_daemon_t bksvar_t : file { create getattr read open write setattr rename link unlink lock ioctl append};
+allow bksproc_daemon_t consoletype_exec_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t default_context_t : file { getattr read open ioctl lock };
+# VERIFY: Login also wants
+allow bksproc_daemon_t default_context_t : file { create write rename unlink };
+allow bksproc_daemon_t etc_t : file { getattr read open ioctl create write unlink setattr rename rename };
+allow bksproc_daemon_t etc_runtime_t : file { getattr read open };
+allow bksproc_daemon_t faillog_t : file { getattr read write open lock append};
+allow bksproc_daemon_t file_context_t : file { getattr read open ioctl lock };
+# VERIFY: Login also wants
+allow bksproc_daemon_t file_context_t : file { create write rename unlink };
+allow bksproc_daemon_t hostname_exec_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t initrc_var_run_t : file { getattr read open write lock};
+allow bksproc_daemon_t lastlog_t : file { getattr read write open lock append};
+allow bksproc_daemon_t ld_so_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t ld_so_cache_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t lib_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t load_policy_exec_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t locale_t : file { getattr read open };
+allow bksproc_daemon_t net_conf_t : file { getattr read open };
+allow bksproc_daemon_t proc_t : file { getattr read open };
+allow bksproc_daemon_t security_t : file { getattr read open ioctl };
+allow bksproc_daemon_t selinux_config_t : file { getattr read open ioctl };
+allow bksproc_daemon_t semanage_exec_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t semanage_read_lock_t : file { getattr read open execute write lock };
+allow bksproc_daemon_t semanage_store_t : file { getattr read open execute write lock };
+allow bksproc_daemon_t semanage_trans_lock_t : file { getattr read open execute write lock };
+allow bksproc_daemon_t shadow_t : file { getattr read open ioctl };
+allow bksproc_daemon_t shell_exec_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t sysctl_t : file { getattr read open ioctl };
+allow bksproc_daemon_t sysctl_crypto_t : file { getattr read open ioctl };
+allow bksproc_daemon_t sysctl_kernel_t : file { getattr read open ioctl };
+allow bksproc_daemon_t unconfined_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t usr_t : file { getattr read open execute execute_no_trans };
+allow bksproc_daemon_t user_cron_spool_t : file { getattr read open ioctl write create };
+allow bksproc_daemon_t user_home_t : file { getattr read open ioctl };
+allow bksproc_daemon_t user_tmp_t : file { getattr read open ioctl };
+allow bksproc_daemon_t user_tty_device_t : file { getattr read write open lock append};
+allow bksproc_daemon_t var_t : file { getattr read open execute execute_no_trans };
+# VERIFY: Login also wants (could be due to wrong context on bksque_t files)
+allow bksproc_daemon_t var_t : file { create write unlink};
+allow bksproc_daemon_t wtmp_t : file { getattr read open write append lock ioctl };
+
+
+# Directories
+allow bksproc_daemon_t bin_t : dir { getattr read open search };
+allow bksproc_daemon_t bksbin_t : dir { getattr read open search };
+allow bksproc_daemon_t bksetc_t : dir { getattr read open search write remove_name add_name };
+allow bksproc_daemon_t bksbin_command_t : dir { getattr read open search };
+allow bksproc_daemon_t bksbin_daemon_t : dir { getattr read open search };
+allow bksproc_daemon_t bksbin_gui_t : dir { getattr read open search };
+allow bksproc_daemon_t bksque_t : dir { getattr read open search write add_name remove_name unlink setattr};
+allow bksproc_daemon_t bksvar_t : dir { getattr read open search write add_name remove_name unlink setattr};
+allow bksproc_daemon_t bksproc_command_t : dir { getattr read open search write add_name remove_name unlink setattr}; # /proc
+allow bksproc_daemon_t bksproc_daemon_t : dir { getattr read open search write add_name remove_name unlink setattr}; # /proc
+allow bksproc_daemon_t default_context_t : dir { getattr read open search };
+allow bksproc_daemon_t default_context_t : dir { write add_name remove_name unlink };
+allow bksproc_daemon_t device_t : dir { getattr read open search };
+allow bksproc_daemon_t devpts_t : dir { getattr read open search };
+allow bksproc_daemon_t etc_t : dir { getattr read open search write add_name remove_name unlink rename};
+allow bksproc_daemon_t file_context_t : dir { getattr read open search };
+allow bksproc_daemon_t file_context_t : dir { write add_name remove_name unlink };
+allow bksproc_daemon_t home_root_t : dir { getattr read open search };
+allow bksproc_daemon_t lib_t : dir { getattr read open search };
+allow bksproc_daemon_t locale_t : dir { getattr read open search };
+allow bksproc_daemon_t mail_spool_t : dir { getattr read open };
+allow bksproc_daemon_t proc_t : dir { getattr read open search };
+allow bksproc_daemon_t root_t : dir { getattr read open search };
+allow bksproc_daemon_t security_t : dir { getattr read open search };
+allow bksproc_daemon_t selinux_config_t : dir { getattr read open search };
+allow bksproc_daemon_t selinux_config_t : dir { write add_name remove_name rmdir };
+allow bksproc_daemon_t semanage_read_lock_t : dir { getattr read open search };
+allow bksproc_daemon_t semanage_store_t : dir { search read open getattr add_name write remove_name };
+allow bksproc_daemon_t semanage_trans_lock_t : dir { getattr read open search };
+allow bksproc_daemon_t setrans_var_run_t : dir { getattr read open search };
+allow bksproc_daemon_t sysctl_t : dir { getattr read open search };
+allow bksproc_daemon_t sysctl_crypto_t : dir { getattr read open search };
+allow bksproc_daemon_t sysctl_kernel_t : dir { getattr read open search };
+allow bksproc_daemon_t tmp_t : dir { search read create write getattr rmdir remove_name open add_name };
+allow bksproc_daemon_t usr_t : dir { getattr read open search };
+allow bksproc_daemon_t user_cron_spool_t : dir { getattr read open search write add_name };
+allow bksproc_daemon_t user_home_dir_t : dir { getattr read open search };
+allow bksproc_daemon_t var_t : dir { getattr read open search };
+# VERIFY: Login also wants: (this may be due to wrong context on bksque_t files
+allow bksproc_daemon_t var_t : dir { create add_name write remove_name rmdir};
+allow bksproc_daemon_t var_log_t : dir { getattr read open search };
+allow bksproc_daemon_t var_run_t : dir { getattr read open search };
+allow bksproc_daemon_t var_spool_t : dir { getattr read open search };
+allow bksproc_daemon_t xdm_tmp_t : dir { getattr read open search };
+
+# Various types
+allow bksproc_daemon_t bksproc_daemon_t : capability { audit_write setgid audit_control setuid chown sys_tty_config dac_override sys_resource net_bind_service};
+allow bksproc_daemon_t self : capability { setuid setgid chown fowner kill };
+allow bksproc_daemon_t devpts_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_daemon_t devtty_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_daemon_t null_device_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_daemon_t ptmx_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_daemon_t urandom_device_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_daemon_t user_tty_device_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_daemon_t bksproc_command_t : fd { use };
+allow bksproc_daemon_t bksproc_daemon_t : fd { use };
+allow bksproc_daemon_t initrc_t : fd { use };
+allow bksproc_daemon_t local_login_t : fd { use };
+allow bksproc_daemon_t unconfined_t : fd { use };
+allow bksproc_daemon_t bksproc_command_t : fifo_file { getattr read open write lock ioctl };
+allow bksproc_daemon_t bksproc_daemon_t : fifo_file { getattr read open write lock ioctl };
+allow bksproc_daemon_t security_t : filesystem { getattr };
+allow bksproc_daemon_t devpts_t : filesystem { getattr };
+allow bksproc_daemon_t bksproc_daemon_t : key { write link search };
+allow bksproc_daemon_t bin_t : lnk_file { getattr read };
+allow bksproc_daemon_t bksetc_t : lnk_file { getattr read };
+allow bksproc_daemon_t bksproc_command_t : lnk_file { getattr read };
+allow bksproc_daemon_t bksproc_daemon_t : lnk_file { getattr read };
+allow bksproc_daemon_t etc_t : lnk_file { getattr read create unlink };
+allow bksproc_daemon_t lib_t : lnk_file { getattr read };
+allow bksproc_daemon_t proc_t : lnk_file { getattr read };
+allow bksproc_daemon_t unconfined_t : lnk_file { getattr read };
+allow bksproc_daemon_t bksproc_daemon_t : netlink_audit_socket { create read bind write getattr nlmsg_read nlmsg_relay};
+allow bksproc_daemon_t bksproc_daemon_t : netlink_route_socket { create read bind write getattr nlmsg_read };
+allow bksproc_daemon_t bksproc_command_t : process { getattr fork setpgid sigchld setsched transition rlimitinh siginh noatsecure signull signal };
+allow bksproc_daemon_t bksproc_daemon_t : process { getattr fork setpgid sigchld setsched transition rlimitinh siginh noatsecure signull signal };
+allow bksproc_daemon_t unconfined_t : process { getattr signull signal };
+allow bksproc_daemon_t init_t : process { getattr sigchld siginh };
+allow bksproc_daemon_t unconfined_t : process { getattr fork setpgid sigchld setsched transition rlimitinh siginh noatsecure};
+allow bksproc_daemon_t unconfined_t : process { getattr fork sigchld setsched transition rlimitinh siginh noatsecure};
+allow bksproc_daemon_t self : sem {create};
+allow bksproc_daemon_t self : shm {create};
+allow bksproc_daemon_t bksque_t : sock_file { create getattr read open write setattr rename link unlink lock ioctl append};
+allow bksproc_daemon_t devlog_t : sock_file { create getattr read open write setattr rename link unlink lock ioctl append};
+allow bksproc_daemon_t bksproc_daemon_t : tcp_socket {getattr connect create read write bind node_bind getopt setopt ioctl listen accept name_bind name_connect shutdown };
+allow bksproc_daemon_t node_t : tcp_socket {getattr connect create read write bind node_bind getopt setopt ioctl accept name_bind name_connect shutdown };
+allow bksproc_daemon_t port_t : tcp_socket {getattr connect create read write bind node_bind getopt setopt ioctl accept name_bind name_connect shutdown };
+allow bksproc_daemon_t ssh_port_t : tcp_socket {getattr connect create read write bind node_bind getopt setopt ioctl accept name_bind name_connect shutdown };
+allow bksproc_daemon_t bksproc_daemon_t : udp_socket {getattr connect create read write bind node_bind getopt setopt ioctl listen accept name_bind shutdown};
+allow bksproc_daemon_t node_t : udp_socket {getattr connect create read write bind node_bind getopt setopt ioctl accept name_bind shutdown};
+allow bksproc_daemon_t port_t : udp_socket {getattr connect create read write bind node_bind getopt setopt ioctl accept name_bind shutdown};
+allow bksproc_daemon_t bksproc_daemon_t : unix_stream_socket {create bind read write accept connectto sendto connect listen};
+allow bksproc_daemon_t bksproc_daemon_t : unix_dgram_socket {create read write accept sendto connect bind listen };
+allow bksproc_daemon_t syslogd_t : unix_dgram_socket {create read write accept sendto connect};
+
+
+# BoKS commands and binaries
+allow bksproc_command_t admin_home_t : file { getattr read open ioctl };
+allow bksproc_command_t auditd_log_t : file { getattr open read write append };
+allow bksproc_command_t bin_t : file { getattr read open execute execute_no_trans };
+allow bksproc_command_t bksbin_t : file { getattr read open execute execute_no_trans ioctl entrypoint};
+allow bksproc_command_t bksbin_command_t : file { getattr read open execute execute_no_trans ioctl entrypoint};
+allow bksproc_command_t bksbin_daemon_t : file { getattr read open execute execute_no_trans ioctl entrypoint};
+allow bksproc_command_t bksbin_filmon_t : file { getattr read open execute execute_no_trans ioctl entrypoint};
+allow bksproc_command_t bksbin_gui_t : file { getattr read open execute execute_no_trans };
+allow bksproc_command_t bksetc_t : file { getattr read open ioctl append write rename setattr unlink create };
+allow bksproc_command_t bksdoc_t : file { getattr read open ioctl };
+allow bksproc_command_t bkslog_t : file { create getattr read open write setattr rename link unlink lock ioctl append};
+allow bksproc_command_t bksproc_command_t : file { getattr read open execute write }; # write needed for /proc files
+allow bksproc_command_t bksproc_daemon_t : file { getattr read open execute write }; # write needed for /proc files
+allow bksproc_command_t bksque_t : file { create getattr read open write setattr rename link unlink lock ioctl append};
+allow bksproc_command_t bksque_t : sock_file { create getattr read open write setattr rename link unlink lock ioctl append};
+allow bksproc_command_t bksvar_t : file { create getattr read open write setattr rename link unlink lock ioctl append};
+allow bksproc_command_t etc_t : file { getattr read open ioctl };
+allow bksproc_command_t faillog_t : file { getattr read write open lock append};
+allow bksproc_command_t ftpd_initrc_exec_t : file { getattr open read execute execute_no_trans };
+allow bksproc_command_t hostname_exec_t : file { getattr read open execute execute_no_trans };
+allow bksproc_command_t lib_t : file { getattr read open execute execute_no_trans };
+allow bksproc_command_t ld_so_t : file { getattr read open execute execute_no_trans };
+allow bksproc_command_t ld_so_cache_t : file { getattr read open execute execute_no_trans };
+allow bksproc_command_t locale_t : file { getattr read open };
+allow bksproc_command_t proc_t : file { getattr read open };
+allow bksproc_command_t root_t : file { getattr read open };
+allow bksproc_command_t rpm_tmp_t : file { getattr read open };
+allow bksproc_command_t security_t : file { getattr read open };
+allow bksproc_command_t shell_exec_t : file { getattr read open execute execute_no_trans };
+allow bksproc_command_t selinux_config_t : file { getattr read open ioctl };
+allow bksproc_command_t semanage_exec_t : file { getattr read open execute execute_no_trans };
+allow bksproc_command_t semanage_read_lock_t : file { getattr read open execute write };
+allow bksproc_command_t semanage_store_t : file { getattr read open execute write };
+allow bksproc_command_t semanage_trans_lock_t : file { getattr read open execute write };
+allow bksproc_command_t sysctl_kernel_t : file { getattr read open };
+allow bksproc_command_t unconfined_t : file { getattr read open execute execute_no_trans };
+allow bksproc_command_t user_tmp_t : file { getattr read open };
+allow bksproc_command_t usr_t : file { getattr read open execute execute_no_trans };
+allow bksproc_command_t var_t : file { getattr read open execute execute_no_trans };
+# VERIFY: Login also wants (could be due to wrong context on bksque_t files
+allow bksproc_command_t var_t : file { create write unlink};
+
+
+allow bksproc_command_t admin_home_t : dir { getattr read open search };
+allow bksproc_command_t auditd_log_t : dir { getattr read open search };
+allow bksproc_command_t bin_t : dir { getattr read open search };
+allow bksproc_command_t bksbin_t : dir { getattr read open search };
+allow bksproc_command_t bksetc_t : dir { getattr read open search remove_name write add_name create unlink };
+allow bksproc_command_t bksbin_command_t : dir { getattr read open search };
+allow bksproc_command_t bksbin_daemon_t : dir { getattr read open search };
+allow bksproc_command_t bksbin_gui_t : dir { getattr read open search };
+allow bksproc_command_t bksproc_command_t : dir { getattr read open search };
+allow bksproc_command_t bksproc_daemon_t : dir { getattr read open search };
+allow bksproc_command_t bksque_t : dir { getattr read open search write add_name remove_name unlink rename};
+allow bksproc_command_t bksvar_t : dir { create getattr read open search write add_name remove_name unlink rename setattr};
+allow bksproc_command_t device_t : dir { getattr read open search };
+allow bksproc_command_t devpts_t : dir { getattr read open search };
+allow bksproc_command_t etc_t : dir { getattr read open search write remove_name add_name rename unlink};
+allow bksproc_command_t home_root_t : dir { getattr search read open };
+allow bksproc_command_t lib_t : dir { getattr read open search };
+allow bksproc_command_t locale_t : dir { getattr read open search };
+allow bksproc_command_t proc_t : dir { getattr read open search };
+allow bksproc_command_t root_t : dir { getattr read open search };
+allow bksproc_command_t security_t : dir { getattr read open search };
+allow bksproc_command_t setrans_var_run_t : dir { getattr read open search };
+allow bksproc_command_t sysctl_t : dir { getattr read open search };
+allow bksproc_command_t sysctl_kernel_t : dir { getattr read open search };
+allow bksproc_command_t tmp_t : dir { search read create write getattr rmdir remove_name open add_name };
+allow bksproc_command_t user_home_t : dir { getattr read open search };
+allow bksproc_command_t user_home_dir_t : dir { getattr read open search };
+allow bksproc_command_t user_tmp_t : dir { getattr read open search };
+allow bksproc_command_t usr_t : dir { getattr read open search };
+allow bksproc_command_t var_t : dir { getattr read open search };
+allow bksproc_command_t var_log_t : dir { getattr read open search };
+allow bksproc_command_t var_t : dir { create add_name write remove_name rmdir};
+allow bksproc_command_t var_run_t : dir { getattr read open search };
+allow bksproc_command_t xdm_tmp_t : dir { getattr read open search };
+
+
+# Various file types
+allow bksproc_command_t self : capability { setuid setgid chown kill };
+allow bksproc_command_t devpts_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_command_t devtty_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_command_t null_device_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_command_t ptmx_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_command_t urandom_device_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_command_t user_tty_device_t : chr_file { getattr open ioctl read write setattr };
+allow bksproc_command_t bksproc_command_t : fd { use };
+allow bksproc_command_t bksproc_daemon_t : fd { use };
+allow bksproc_command_t bksproc_command_t : fifo_file { getattr read open write lock ioctl };
+allow bksproc_command_t bksproc_daemon_t : fifo_file { getattr read open write lock ioctl };
+allow bksproc_command_t local_login_t : fd { use };
+allow bksproc_command_t unconfined_t : fd { use };
+allow bksproc_command_t security_t : filesystem { getattr };
+allow bksproc_command_t devpts_t : filesystem { getattr };
+allow bksproc_command_t bin_t : lnk_file { getattr read };
+allow bksproc_command_t bksetc_t : lnk_file { getattr read unlink create };
+allow bksproc_command_t bksproc_command_t : lnk_file { getattr read };
+allow bksproc_command_t bksproc_daemon_t : lnk_file { getattr read };
+allow bksproc_command_t etc_t : lnk_file { getattr read create unlink};
+allow bksproc_command_t lib_t : lnk_file { getattr read };
+allow bksproc_command_t proc_t : lnk_file { getattr read };
+allow bksproc_command_t bksproc_command_t : process { getattr fork setpgid sigchld setsched transition rlimitinh siginh noatsecure signull signal };
+allow bksproc_command_t bksproc_daemon_t : process { getattr fork setpgid sigchld setsched transition rlimitinh siginh noatsecure signull signal };
+allow bksproc_command_t init_t : process { getattr sigchld siginh };
+allow bksproc_command_t unconfined_t : process { getattr fork setpgid sigchld setsched transition rlimitinh siginh noatsecure};
+allow bksproc_command_t self : sem {create};
+allow bksproc_command_t self : shm {create};
+allow bksproc_command_t bksproc_command_t : unix_stream_socket {create bind read write accept connectto sendto connect listen};
+allow bksproc_command_t bksproc_daemon_t : unix_stream_socket {create bind read write accept connectto sendto connect listen};
+allow bksproc_command_t bksproc_command_t : unix_dgram_socket {create read write accept sendto connect bind listen };
+allow bksproc_command_t bksproc_daemon_t : unix_dgram_socket {create read write accept sendto connect bind listen };
+
+
+#============= allow login operations ================
+# These are rules specifically needed to make non-BoKS daemons work with
+# BoKS. Things like the Linux-native ftp daemon for example and the 
+# console login.
+
+allow bksbin_t bkslog_t : file { getattr read append open };
+allow bksbin_t bksque_t : file { read write open lock };
+allow bksbin_t bksque_t : unix_stream_socket { connectto };
+allow bksbin_t bksque_t : sock_file { read write open lock };
+
+allow ftpd_t bksetc_t : file { getattr read append open };
+allow ftpd_t bkslog_t : file { getattr read append open };
+allow ftpd_t bksque_t : file { read write open lock };
+allow ftpd_t bksetc_t : dir { getattr search read open };
+allow ftpd_t bksque_t : dir { getattr search read open };
+allow ftpd_t bksvar_t : dir { getattr search read open };
+allow ftpd_t home_root_t : dir { getattr search read open };
+allow ftpd_t bksetc_t : lnk_file { getattr read };
+allow ftpd_t bksproc_daemon_t : unix_stream_socket { connectto };
+allow ftpd_t bksque_t : unix_stream_socket { connectto };
+allow ftpd_t bksque_t : sock_file { read write open lock };
+
+allow initrc_t bkslog_t : file { getattr read append open };
+allow initrc_t bksque_t : file { read write open lock };
+allow initrc_t bksque_t : unix_stream_socket { connectto };
+allow initrc_t bksque_t : sock_file { read write open lock };
+
+allow local_login_t bksetc_t : file { getattr read append open };
+allow local_login_t bkslog_t : file { getattr read append open };
+allow local_login_t bksque_t : file { read write open lock };
+allow local_login_t bksetc_t : dir { getattr search read open };
+allow local_login_t bksque_t : dir { getattr search read open };
+allow local_login_t bksvar_t : dir { getattr search read open };
+allow local_login_t home_root_t : dir { getattr search read open };
+allow local_login_t bksetc_t : lnk_file { getattr read };
+allow local_login_t bksproc_daemon_t : unix_stream_socket { connectto };
+allow local_login_t bksque_t : unix_stream_socket { connectto };
+allow local_login_t bksque_t : sock_file { read write open lock };
+
+allow sshd_t bksetc_t : file { getattr read append open };
+allow sshd_t bkslog_t : file { getattr read append open };
+allow sshd_t bksque_t : file { read write open lock };
+allow sshd_t bksetc_t : dir { getattr search read open };
+allow sshd_t bksque_t : dir { getattr search read open };
+allow sshd_t bksvar_t : dir { getattr search read open };
+allow sshd_t home_root_t : dir { getattr search read open };
+allow sshd_t bksetc_t : lnk_file { getattr read };
+allow sshd_t bksproc_daemon_t : unix_stream_socket { connectto };
+allow sshd_t bksque_t : unix_stream_socket { connectto };
+allow sshd_t bksque_t : sock_file { read write open lock };
+
+allow bksproc_sshd_t bkslog_t : file { getattr read append open };
+allow bksproc_sshd_t bksque_t : file { read write open lock };
+allow bksproc_sshd_t bksque_t : unix_stream_socket { connectto };
+allow bksproc_sshd_t bksque_t : sock_file { read write open lock };
+
+
+
+#=============== Type transitions =======================
+# These rules define the process type label, depending on what kind of BoKS
+# binary is being run, by what kind of parent process. 
+#
+# Rules read as follows:
+# type_transtion [Parent Process Type] [Type of File being executed to create
+# a process] : process [Type of The New Process created]
+
+# Running of boks commands and processes
+type_transition	unconfined_t bksbin_command_t : process bksproc_command_t;
+type_transition	bksproc_command_t bksbin_command_t : process bksproc_command_t;
+type_transition	bksproc_daemon_t bksbin_command_t : process bksproc_command_t;
+type_transition	unconfined_t bksbin_daemon_t : process bksproc_daemon_t;
+type_transition	bksproc_command_t bksbin_daemon_t : process bksproc_daemon_t;
+type_transition	bksproc_daemon_t bksbin_daemon_t : process bksproc_daemon_t;
+type_transition	initrc_t bksbin_daemon_t : process bksproc_daemon_t;
+type_transition	bksproc_command_t bksbin_filmon_t : process bksproc_filmon_t;
+type_transition	bksproc_daemon_t bksbin_filmon_t : process bksproc_filmon_t;
+type_transition	initrc_t bksbin_filmon_t : process bksproc_filmon_t;
+type_transition	unconfined_t bksbin_filmon_t : process bksproc_filmon_t;
+type_transition	unconfined_t bksbin_suexec_t : process bksproc_suexec_t;
+type_transition	bksproc_command_t bksbin_suexec_t : process bksproc_suexec_t;
+type_transition	bksproc_daemon_t bksbin_suexec_t : process bksproc_suexec_t;
+
+
+# Spawning processes that ought to run as usual. These were binaries that 
+# BoKS tries to run and which automatically turned into BoKS type processes
+# instead of their original types. 
+type_transition bksproc_daemon_t abrt_helper_exec_t : process abrt_helper_t; 
+type_transition bksproc_daemon_t xauth_exec_t : process xauth_t; 
+type_transition bksproc_daemon_t mount_exec_t : process mount_t; 
+type_transition bksproc_daemon_t passwd_exec_t : process passwd_t; 
+type_transition bksproc_daemon_t oddjob_mkhomedir_exec_t : process oddjob_mkhomedir_t; 
+type_transition bksproc_daemon_t fusermount_exec_t : process mount_t; 
+type_transition bksproc_daemon_t updpwd_exec_t : process updpwd_t; 
+type_transition bksproc_daemon_t chkpwd_exec_t : process chkpwd_t; 
+type_transition bksproc_daemon_t shell_exec_t : process unconfined_t; 
+type_transition bksproc_daemon_t setfiles_exec_t : process setfiles_t; 
+type_transition bksproc_daemon_t namespace_init_exec_t : process namespace_init_t; 
+
+
+#=============== Port definitions =======================
+# Disabled for now. I haven't figured this out yet. 
+
+#portcon tcp 6500 system_u:object_r:boks_port_t:s0
+#portcon tcp 6501 system_u:object_r:boks_port_t:s0
+#portcon tcp 6502 system_u:object_r:boks_port_t:s0
+#portcon tcp 6503 system_u:object_r:boks_port_t:s0
+#portcon tcp 6504 system_u:object_r:boks_port_t:s0
+#portcon tcp 6505 system_u:object_r:boks_port_t:s0
+#portcon tcp 6506 system_u:object_r:boks_port_t:s0
+#portcon tcp 6507 system_u:object_r:boks_port_t:s0
+#portcon tcp 6508 system_u:object_r:boks_port_t:s0
+
+
+
+

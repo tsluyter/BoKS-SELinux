@@ -1,0 +1,69 @@
+I don't know why, but boks does a semi-regular PS listing of all of the system.
+SELinux prevents it from getting all the information from /proc, which makes sense.
+Audit2allow suggested the following additions, which I am foregoing for now. BOKS
+does not need this access on all of /proc and all the other files.
+
+allow bksproc_command_t abrt_dump_oops_t:dir { getattr search };
+allow bksproc_command_t abrt_dump_oops_t:file { read open };
+allow bksproc_command_t abrt_t:dir { getattr search };
+allow bksproc_command_t abrt_t:file { read open };
+allow bksproc_command_t apmd_t:dir { getattr search };
+allow bksproc_command_t apmd_t:file { read open };
+allow bksproc_command_t audisp_t:dir { getattr search };
+allow bksproc_command_t audisp_t:file { read open };
+allow bksproc_command_t auditd_t:dir { getattr search };
+allow bksproc_command_t auditd_t:file { read open };
+allow bksproc_command_t automount_t:dir { getattr search };
+allow bksproc_command_t automount_t:file { read open };
+allow bksproc_command_t certmonger_t:dir { getattr search };
+allow bksproc_command_t certmonger_t:file { read open };
+allow bksproc_command_t consolekit_t:dir { getattr search };
+allow bksproc_command_t consolekit_t:file { read open };
+allow bksproc_command_t crond_t:dir { getattr search };
+allow bksproc_command_t crond_t:fd use;
+allow bksproc_command_t crond_t:fifo_file { read write ioctl };
+allow bksproc_command_t crond_t:file { read open };
+allow bksproc_command_t crond_t:process sigchld;
+allow bksproc_command_t cupsd_t:dir { getattr search };
+allow bksproc_command_t cupsd_t:file { read open };
+allow bksproc_command_t ftpd_t:dir { getattr search };
+allow bksproc_command_t ftpd_t:file { read open };
+allow bksproc_command_t getty_t:dir { getattr search };
+allow bksproc_command_t getty_t:file { read open };
+allow bksproc_command_t hald_t:dir { getattr search };
+allow bksproc_command_t hald_t:file { read open };
+allow bksproc_command_t init_t:dir { getattr search };
+allow bksproc_command_t init_t:file { read open };
+allow bksproc_command_t kernel_t:dir { getattr search };
+allow bksproc_command_t kernel_t:file { read open };
+allow bksproc_command_t local_login_t:dir { getattr search };
+allow bksproc_command_t local_login_t:file { read open };
+allow bksproc_command_t mcelog_t:dir { getattr search };
+allow bksproc_command_t mcelog_t:file { read open };
+allow bksproc_command_t ntpd_t:dir { getattr search };
+allow bksproc_command_t ntpd_t:file { read open };
+allow bksproc_command_t postfix_master_t:dir { getattr search };
+allow bksproc_command_t postfix_master_t:file { read open };
+allow bksproc_command_t postfix_pickup_t:dir { getattr search };
+allow bksproc_command_t postfix_pickup_t:file { read open };
+allow bksproc_command_t postfix_qmgr_t:dir { getattr search };
+allow bksproc_command_t postfix_qmgr_t:file { read open };
+allow bksproc_command_t rpcbind_t:dir { getattr search };
+allow bksproc_command_t rpcbind_t:file { read open };
+allow bksproc_command_t rpcd_t:dir { getattr search };
+allow bksproc_command_t rpcd_t:file { read open };
+allow bksproc_command_t self:capability { sys_ptrace dac_override };
+allow bksproc_command_t setroubleshootd_t:dir { getattr search };
+allow bksproc_command_t setroubleshootd_t:file { read open };
+allow bksproc_command_t syslogd_t:dir { getattr search };
+allow bksproc_command_t syslogd_t:file { read open };
+allow bksproc_command_t system_dbusd_t:dir { getattr search };
+allow bksproc_command_t system_dbusd_t:file { read open };
+allow bksproc_command_t tty_device_t:chr_file getattr;
+allow bksproc_command_t udev_t:dir { getattr search };
+allow bksproc_command_t udev_t:file { read open };
+allow bksproc_command_t unconfined_t:dir { getattr search };
+allow bksproc_command_t unconfined_t:lnk_file read;
+
+
+
